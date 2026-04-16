@@ -285,13 +285,6 @@ app.post('/fib/webhook', (req, res) => {
 | [`examples/basic.js`](examples/basic.js) | Full create → poll → refund flow |
 | [`examples/express-webhook.js`](examples/express-webhook.js) | Express server with webhook handler |
 
----
-
-## Publishing to npm
-
-1. Update `package.json` with your npm username and repository URL.
-2. Log in to npm: `npm login`
-3. Publish: `npm publish`
 
 ---
 
