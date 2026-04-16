@@ -2,10 +2,6 @@
 
 > Official Node.js SDK for the **First Iraqi Bank (FIB) Online Payment Gateway**
 
-[![npm version](https://img.shields.io/npm/v/fibpay.svg)](https://www.npmjs.com/package/fibpay)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D14-brightgreen.svg)](https://nodejs.org)
-
 ---
 
 ## Table of Contents
@@ -23,7 +19,6 @@
 - [Error Handling](#error-handling)
 - [Webhook Integration](#webhook-integration)
 - [Examples](#examples)
-- [Publishing to npm](#publishing-to-npm)
 
 ---
 
@@ -35,6 +30,7 @@
 - 🌍 Stage & Production environment support
 - 📦 Zero runtime dependencies
 - 📝 Full JSDoc type annotations
+- 🔷 ESM-native (`"type": "module"`)
 
 ---
 
@@ -44,14 +40,14 @@
 npm install fibpay
 ```
 
-> Requires Node.js **v14 or higher**.
+> Requires Node.js **v14 or higher**. This package is **ESM-only** — use `import`, not `require()`.
 
 ---
 
 ## Quick Start
 
 ```js
-const FibPay = require('fibpay');
+import { FibPay } from 'fibpay';
 
 const fib = new FibPay({
   clientId: 'YOUR_CLIENT_ID',
@@ -71,7 +67,7 @@ console.log('App Link:', payment.personalAppLink);
 
 // Wait until the customer pays (or times out)
 const result = await fib.waitForStatus(payment.paymentId);
-console.log('Status:', result.status); // 'PAID' | 'DECLINED'
+console.log('Status:', result.status); // 'PAID' | 'DECLINED' | 'REFUNDED'
 ```
 
 ---
@@ -79,18 +75,27 @@ console.log('Status:', result.status); // 'PAID' | 'DECLINED'
 ## Configuration
 
 ```js
+import { FibPay } from 'fibpay';
+
 const fib = new FibPay({
-  clientId: 'YOUR_CLIENT_ID',       // required
+  clientId: 'YOUR_CLIENT_ID',        // required
   clientSecret: 'YOUR_CLIENT_SECRET', // required
-  environment: 'stage',             // 'stage' (default) | 'production'
+  environment: 'stage',              // 'stage' (default) | 'production'
 });
 ```
 
-| Option        | Type     | Required | Default   | Description                              |
-|---------------|----------|----------|-----------|------------------------------------------|
-| `clientId`    | `string` | ✅        | —         | FIB-issued client ID                     |
-| `clientSecret`| `string` | ✅        | —         | FIB-issued client secret                 |
-| `environment` | `string` | ❌        | `'stage'` | `'stage'` for testing, `'production'` for live |
+| Option          | Type     | Required | Default   | Description                                        |
+|-----------------|----------|----------|-----------|----------------------------------------------------|
+| `clientId`      | `string` | ✅        | —         | FIB-issued client ID                               |
+| `clientSecret`  | `string` | ✅        | —         | FIB-issued client secret                           |
+| `environment`   | `string` | ❌        | `'stage'` | `'stage'` for testing, `'production'` for live     |
+
+**Environment base URLs**
+
+| Environment         | Base URL                      |
+|---------------------|-------------------------------|
+| Stage (Test Mode)   | `https://fib-stage.fib.iq`   |
+| Production (Live)   | `https://fib.prod.fib.iq`    |
 
 > 💡 Store credentials in environment variables — never hard-code them.
 
@@ -100,6 +105,8 @@ export FIB_CLIENT_SECRET=your_client_secret
 ```
 
 ```js
+import { FibPay } from 'fibpay';
+
 const fib = new FibPay({
   clientId: process.env.FIB_CLIENT_ID,
   clientSecret: process.env.FIB_CLIENT_SECRET,
@@ -118,13 +125,13 @@ const payment = await fib.createPayment(options);
 
 **Options**
 
-| Parameter     | Type     | Required | Default | Description                              |
-|---------------|----------|----------|---------|------------------------------------------|
-| `amount`      | `number` | ✅        | —       | Amount to charge (positive number)       |
-| `currency`    | `string` | ❌        | `'IQD'` | Currency code                            |
-| `description` | `string` | ❌        | —       | Payment description shown to customer    |
-| `callbackUrl` | `string` | ❌        | —       | Webhook URL called on status change      |
-| `redirectUrl` | `string` | ❌        | —       | URL to redirect customer after payment   |
+| Parameter      | Type     | Required | Default  | Description                                |
+|----------------|----------|----------|----------|--------------------------------------------|
+| `amount`       | `number` | ✅        | —        | Amount to charge (positive number)         |
+| `currency`     | `string` | ❌        | `'IQD'`  | Currency code                              |
+| `description`  | `string` | ❌        | —        | Payment description shown to customer      |
+| `callbackUrl`  | `string` | ❌        | —        | Webhook URL called on status change        |
+| `redirectUrl`  | `string` | ❌        | —        | URL to redirect customer after payment     |
 
 **Response**
 
@@ -165,21 +172,21 @@ const status = await fib.getStatus(paymentId);
 
 **Status values**
 
-| Status              | Description                                   |
-|---------------------|-----------------------------------------------|
-| `UNPAID`            | Payment created, awaiting customer action     |
-| `PAID`              | Successfully paid                             |
-| `DECLINED`          | Payment was declined (see `decliningReason`)  |
-| `REFUND_REQUESTED`  | Refund initiated, processing                  |
-| `REFUNDED`          | Refund completed                              |
+| Status               | Description                                    |
+|----------------------|------------------------------------------------|
+| `UNPAID`             | Payment created, awaiting customer action      |
+| `PAID`               | Successfully paid                              |
+| `DECLINED`           | Payment was declined (see `decliningReason`)   |
+| `REFUND_REQUESTED`   | Refund initiated, processing                   |
+| `REFUNDED`           | Refund completed                               |
 
 **Declining reasons**
 
-| Reason                  | Description                       |
-|-------------------------|-----------------------------------|
-| `SERVER_FAILURE`        | Internal error from FIB           |
-| `PAYMENT_EXPIRATION`    | Payment link expired              |
-| `PAYMENT_CANCELLATION`  | Cancelled by user or merchant     |
+| Reason                   | Description                        |
+|--------------------------|------------------------------------|
+| `SERVER_FAILURE`         | Internal error from FIB            |
+| `PAYMENT_EXPIRATION`     | Payment link expired               |
+| `PAYMENT_CANCELLATION`   | Cancelled by user or merchant      |
 
 ---
 
@@ -199,6 +206,7 @@ Initiates a refund for a **PAID** payment made within the **last 24 hours**.
 
 ```js
 await fib.refundPayment(paymentId);
+
 // Then poll until status === 'REFUNDED'
 const final = await fib.waitForStatus(paymentId);
 ```
@@ -209,7 +217,7 @@ const final = await fib.waitForStatus(paymentId);
 
 ### Wait for Status
 
-Polls `getStatus()` at regular intervals until a terminal state is reached.
+Polls `getStatus()` at regular intervals until a terminal state is reached or the timeout is exceeded.
 
 ```js
 const result = await fib.waitForStatus(paymentId, options);
@@ -217,10 +225,10 @@ const result = await fib.waitForStatus(paymentId, options);
 
 **Options**
 
-| Parameter     | Type     | Default      | Description                             |
-|---------------|----------|--------------|-----------------------------------------|
-| `intervalMs`  | `number` | `3000`       | Polling interval in milliseconds        |
-| `timeoutMs`   | `number` | `300000`     | Max wait time in ms (default: 5 min)    |
+| Parameter    | Type     | Default   | Description                               |
+|--------------|----------|-----------|-------------------------------------------|
+| `intervalMs` | `number` | `3000`    | Polling interval in milliseconds          |
+| `timeoutMs`  | `number` | `300000`  | Max wait time in ms (default: 5 min)      |
 
 Terminal states: `PAID`, `DECLINED`, `REFUNDED`
 
@@ -231,7 +239,7 @@ Terminal states: `PAID`, `DECLINED`, `REFUNDED`
 All SDK methods throw a `FibPayError` on API errors.
 
 ```js
-const { FibPayError } = require('fibpay');
+import { FibPay, FibPayError } from 'fibpay';
 
 try {
   await fib.createPayment({ amount: 1000 });
@@ -285,9 +293,22 @@ app.post('/fib/webhook', (req, res) => {
 | [`examples/basic.js`](examples/basic.js) | Full create → poll → refund flow |
 | [`examples/express-webhook.js`](examples/express-webhook.js) | Express server with webhook handler |
 
+---
+
+## ESM Compatibility Note
+
+This package is **ESM-only**. If your project uses CommonJS (`require()`), you have two options:
+
+**Option 1** — Add `"type": "module"` to your `package.json` and use `import`.
+
+**Option 2** — Use a dynamic import inside a CommonJS file:
+
+```js
+const { FibPay } = await import('fibpay');
+```
 
 ---
 
 ## License
 
-[MIT](LICENSE) © FibPay Contributors
+[MIT](LICENSE) © [Rageofkurd](https://github.com/Rageofkurd)
