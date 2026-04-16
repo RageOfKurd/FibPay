@@ -1,6 +1,6 @@
 'use strict';
 
-const FibPayAuth = require('./auth');
+const FibPayAuth = require('../auth');
 const FibPayPayments = require('./payments');
 
 const ENVIRONMENTS = {
