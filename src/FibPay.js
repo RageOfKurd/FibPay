@@ -2,7 +2,7 @@ import { FibPayAuth } from './auth.js';
 import { FibPayPayments } from './payments.js';
 
 const ENVIRONMENTS = {
-  stage: 'https://fib.stage.fib.iq',
+  stage: 'https://fib-stage.fib.iq',
   production: 'https://fib.prod.fib.iq',
 };
 
