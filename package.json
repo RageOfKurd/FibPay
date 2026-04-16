@@ -1,6 +1,6 @@
 {
   "name": "fibpay",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Official Node.js SDK for the First Iraqi Bank (FIB) Online Payment Gateway",
   "main": "index.js",
   "exports": {
@@ -31,12 +31,12 @@
   "engines": {
     "node": ">=14.0.0"
   },
-"files": [
-  "index.js",
-  "src/**/*",
-  "README.md",
-  "LICENSE"
-],
+  "files": [
+    "index.js",
+    "src/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node examples/basic.js"
   },
