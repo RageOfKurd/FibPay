@@ -1,7 +1,5 @@
-'use strict';
-
-const express = require('express');
-const FibPay = require('../index');
+import express from 'express';
+import { FibPay } from '../index.js';
 
 const app = express();
 app.use(express.json());
@@ -32,9 +30,11 @@ app.get('/pay', async (req, res) => {
   }
 });
 
-app.post('/fib/webhook', async (req, res) => {
+app.post('/fib/webhook', (req, res) => {
   const { paymentId, status } = req.body;
   console.log(`[Webhook] Payment ${paymentId} → ${status}`);
+
+  // Acknowledge immediately before doing any async work
   res.sendStatus(200);
 
   if (status === 'PAID') {

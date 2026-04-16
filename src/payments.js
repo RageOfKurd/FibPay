@@ -1,36 +1,28 @@
-'use strict';
+import { request } from 'https';
+import { FibPayError } from './error.js';
 
-const https = require('https');
+const TERMINAL_STATES = new Set(['PAID', 'DECLINED', 'REFUNDED']);
 
-class FibPayError extends Error {
-  constructor(message, statusCode, body) {
-    super(message);
-    this.name = 'FibPayError';
-    this.statusCode = statusCode;
-    this.body = body;
-  }
-}
-
-class FibPayPayments {
+export class FibPayPayments {
   constructor({ auth, baseUrl }) {
     this._auth = auth;
     this._baseUrl = baseUrl;
   }
 
-  // ─── Public API ────────────────────────────────────────────────────────────
-
   /**
    * Create a new payment.
    * @param {object} options
-   * @param {number}  options.amount              - Amount to charge
-   * @param {string}  options.currency            - Currency code, e.g. "IQD"
-   * @param {string}  [options.description]       - Optional payment description
-   * @param {string}  [options.callbackUrl]       - Webhook URL for status changes
-   * @param {string}  [options.redirectUrl]       - URL to redirect user after payment
+   * @param {number}  options.amount          - Amount to charge (positive number)
+   * @param {string}  [options.currency]      - Currency code (default: "IQD")
+   * @param {string}  [options.description]   - Payment description shown to customer
+   * @param {string}  [options.callbackUrl]   - Webhook URL called on status change
+   * @param {string}  [options.redirectUrl]   - URL to redirect customer after payment
    * @returns {Promise<PaymentResponse>}
    */
   async create({ amount, currency = 'IQD', description, callbackUrl, redirectUrl } = {}) {
-    if (!amount || amount <= 0) throw new Error('[FibPay] amount must be a positive number.');
+    if (!amount || amount <= 0) {
+      throw new Error('[FibPay] amount must be a positive number.');
+    }
 
     const payload = {
       monetaryValue: { amount, currency },
@@ -43,7 +35,7 @@ class FibPayPayments {
   }
 
   /**
-   * Check the status of a payment.
+   * Get the current status of a payment.
    * @param {string} paymentId
    * @returns {Promise<PaymentStatus>}
    */
@@ -55,7 +47,7 @@ class FibPayPayments {
   /**
    * Cancel an UNPAID payment.
    * @param {string} paymentId
-   * @returns {Promise<void>}
+   * @returns {Promise<null>}
    */
   async cancel(paymentId) {
     this._requireId(paymentId, 'paymentId');
@@ -64,9 +56,9 @@ class FibPayPayments {
 
   /**
    * Refund a PAID payment (must have been paid within the last 24 hours).
-   * After calling this, poll getStatus() until status is "REFUNDED".
+   * Poll getStatus() after calling this until status is "REFUNDED".
    * @param {string} paymentId
-   * @returns {Promise<void>}
+   * @returns {Promise<null>}
    */
   async refund(paymentId) {
     this._requireId(paymentId, 'paymentId');
@@ -74,31 +66,31 @@ class FibPayPayments {
   }
 
   /**
-   * Convenience helper: poll getStatus() until the payment reaches a terminal
-   * state (PAID | DECLINED | REFUNDED) or the timeout is exceeded.
-   *
+   * Poll getStatus() until a terminal state is reached or timeout is exceeded.
+   * Terminal states: PAID | DECLINED | REFUNDED
    * @param {string} paymentId
    * @param {object} [options]
-   * @param {number} [options.intervalMs=3000]   - Polling interval in ms
-   * @param {number} [options.timeoutMs=300000]  - Max wait time in ms (default 5 min)
+   * @param {number} [options.intervalMs=3000]  - Polling interval in ms
+   * @param {number} [options.timeoutMs=300000] - Max wait time in ms (default: 5 min)
    * @returns {Promise<PaymentStatus>}
    */
   async waitForStatus(paymentId, { intervalMs = 3000, timeoutMs = 300_000 } = {}) {
     this._requireId(paymentId, 'paymentId');
 
-    const TERMINAL = new Set(['PAID', 'DECLINED', 'REFUNDED']);
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
       const status = await this.getStatus(paymentId);
-      if (TERMINAL.has(status.status)) return status;
+      if (TERMINAL_STATES.has(status.status)) return status;
       await this._sleep(intervalMs);
     }
 
-    throw new Error(`[FibPay] Timed out waiting for payment ${paymentId} to reach a terminal status.`);
+    throw new Error(
+      `[FibPay] Timed out waiting for payment ${paymentId} to reach a terminal status.`,
+    );
   }
 
-  // ─── Internals ─────────────────────────────────────────────────────────────
+  // ─── Internals ──────────────────────────────────────────────────────────────
 
   async _request(method, path, body) {
     const token = await this._auth.getAccessToken();
@@ -115,15 +107,13 @@ class FibPayPayments {
     };
 
     return new Promise((resolve, reject) => {
-      const req = https.request(
+      const req = request(
         { hostname: url.hostname, path: url.pathname + url.search, method, headers },
         (res) => {
           let raw = '';
           res.on('data', (chunk) => (raw += chunk));
           res.on('end', () => {
-            // 204 No Content / 202 Accepted with no body
             if (!raw || res.statusCode === 204) return resolve(null);
-
             try {
               const parsed = JSON.parse(raw);
               if (res.statusCode >= 400) {
@@ -159,18 +149,15 @@ class FibPayPayments {
   }
 }
 
-module.exports = FibPayPayments;
-module.exports.FibPayError = FibPayError;
-
 /**
  * @typedef {object} PaymentResponse
  * @property {string} paymentId
  * @property {string} readableCode
- * @property {string} qrCode          - Base64 QR code image
- * @property {string} validUntil      - ISO-8601 expiry datetime
- * @property {string} personalAppLink - Deep-link for personal FIB app
- * @property {string} businessAppLink - Deep-link for business FIB app
- * @property {string} corporateAppLink
+ * @property {string} qrCode            - Base64 QR code image
+ * @property {string} validUntil        - ISO-8601 expiry datetime
+ * @property {string} personalAppLink   - Deep-link for personal FIB app
+ * @property {string} businessAppLink   - Deep-link for business FIB app
+ * @property {string} corporateAppLink  - Deep-link for corporate FIB app
  */
 
 /**

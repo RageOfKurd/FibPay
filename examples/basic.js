@@ -1,15 +1,13 @@
-'use strict';
+import { FibPay } from '../index.js';
 
-const FibPay = require('../index');
+const fib = new FibPay({
+  clientId: process.env.FIB_CLIENT_ID || 'YOUR_CLIENT_ID',
+  clientSecret: process.env.FIB_CLIENT_SECRET || 'YOUR_CLIENT_SECRET',
+  environment: 'stage',
+});
 
 async function main() {
-  const fib = new FibPay({
-    clientId: process.env.FIB_CLIENT_ID || 'YOUR_CLIENT_ID',
-    clientSecret: process.env.FIB_CLIENT_SECRET || 'YOUR_CLIENT_SECRET',
-    environment: 'stage',
-  });
-
-  // Create a payment
+  // 1. Create a payment
   console.log('Creating payment...');
   const payment = await fib.createPayment({
     amount: 1000,
@@ -24,11 +22,11 @@ async function main() {
   console.log('  Personal App:', payment.personalAppLink);
   console.log('  Business App:', payment.businessAppLink);
 
-  // Check status once
+  // 2. Check status once
   const status = await fib.getStatus(payment.paymentId);
   console.log('\n📋 Current status:', status.status);
 
-  // Wait for terminal status (2 min timeout for demo)
+  // 3. Wait for terminal status (2 min timeout for demo)
   console.log('\n⏳ Waiting for payment to complete...');
   try {
     const final = await fib.waitForStatus(payment.paymentId, {
@@ -42,7 +40,7 @@ async function main() {
       console.log('  Paid at:', final.paidAt);
       console.log('  Paid by:', final.paidBy?.name, '/', final.paidBy?.iban);
 
-      // Refund
+      // 4. Refund
       console.log('\nRefunding payment...');
       await fib.refundPayment(payment.paymentId);
       const refunded = await fib.waitForStatus(payment.paymentId);
